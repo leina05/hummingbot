@@ -9,7 +9,7 @@ from typing import Dict
 from hummingbot.logger import HummingbotLogger
 from hummingbot.core.data_type.order_book_row import OrderBookRow
 
-_cbpaot_logger = None
+_gaot_logger = None
 s_empty_diff = np.ndarray(shape=(0, 4), dtype="float64")
 
 GeminiOrderBookTrackingDictionary = Dict[Decimal, Dict[str, Dict[str, any]]]
@@ -21,7 +21,7 @@ TYPE_DONE = "done"
 SIDE_BUY = "buy"
 SIDE_SELL = "sell"
 
-cdef class GeminiOrderTracker:
+cdef class GeminiActiveOrderTracker:
     def __init__(self,
                  active_asks: GeminiOrderBookTrackingDictionary = None,
                  active_bids: GeminiOrderBookTrackingDictionary = None):
@@ -31,10 +31,10 @@ cdef class GeminiOrderTracker:
 
     @classmethod
     def logger(cls) -> HummingbotLogger:
-        global _cbpaot_logger
-        if _cbpaot_logger is None:
-            _cbpaot_logger = logging.getLogger(__name__)
-        return _cbpaot_logger
+        global _gaot_logger
+        if _gaot_logger is None:
+            _gaot_logger = logging.getLogger(__name__)
+        return _gaot_logger
 
     @property
     def active_asks(self) -> GeminiOrderBookTrackingDictionary:
