@@ -42,6 +42,7 @@ class GeminiAPIOrderBookDataSource(OrderBookTrackerDataSource):
     PING_TIMEOUT = 10.0
 
     _gaobds_logger: Optional[HummingbotLogger] = None
+    _trading_pair_cache: Dict[str, str] = {}
 
     @classmethod
     def logger(cls) -> HummingbotLogger:
@@ -68,26 +69,50 @@ class GeminiAPIOrderBookDataSource(OrderBookTrackerDataSource):
         #     resp_json = await resp.json()
         #     return float(resp_json["price"])
 
-    @staticmethod
-    async def fetch_trading_pairs() -> List[str]:
+    @classmethod
+    async def fetch_trading_pairs(cls) -> List[str]:
         # TODO (leina)
-        pass
-        # try:
-        #     async with aiohttp.ClientSession() as client:
-        #         async with client.get(f"{COINBASE_REST_URL}/products/", timeout=5) as response:
-        #             if response.status == 200:
-        #                 markets = await response.json()
-        #                 raw_trading_pairs: List[str] = list(map(lambda details: details.get("id"), markets))
-        #                 trading_pair_list: List[str] = []
-        #                 for raw_trading_pair in raw_trading_pairs:
-        #                     trading_pair_list.append(raw_trading_pair)
-        #                 return trading_pair_list
+        # GET https://api.gemini.com/v1/symbols
+        try:
+            async with aiohttp.ClientSession() as client:
+                async with client.get(f"{GEMINI_REST_URL}/v1/symbols", timeout=5) as response:
+                    if response.status == 200:
+                        raw_trading_pairs = await response.json()
+                        trading_pair_list: List[str] = []
 
-        # except Exception:
-        #     # Do nothing if the request fails -- there will be no autocomplete for coinbase trading pairs
-        #     pass
+                        for raw_trading_pair in raw_trading_pairs:
+                            trading_pair = cls._trading_pair_cache.get(raw_trading_pair)
+                            if not trading_pair:
+                                details = await cls._fetch_trading_pair_detail(raw_trading_pair)
+                                base = details.get("base_currency").upper()
+                                quote = details.get("quote_currency").upper()
+                                trading_pair = f"{base}-{quote}"
+                                cls._trading_pair_cache[raw_trading_pair] = trading_pair
 
-        # return []
+                            trading_pair_list.append(trading_pair)
+
+                        return trading_pair_list
+
+        except Exception:
+            # Do nothing if the request fails -- there will be no autocomplete for gemini trading pairs
+            pass
+
+        return []
+
+    @staticmethod
+    async def _fetch_trading_pair_detail(trading_pair: str) -> Dict[str, any]:
+        try:
+            async with aiohttp.ClientSession() as client:
+                async with client.get(f"{GEMINI_REST_URL}/v1/symbols/details/{trading_pair}", timeout=5) as response:
+                    if response.status == 200:
+                        details = await response.json()
+                        return details
+
+        except Exception:
+            # Do nothing if the request fails -- there will be no autocomplete for gemini trading pairs
+            pass
+
+        return {}
 
     @staticmethod
     async def get_snapshot(client: aiohttp.ClientSession, trading_pair: str) -> Dict[str, any]:

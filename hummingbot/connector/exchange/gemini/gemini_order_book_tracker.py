@@ -24,13 +24,13 @@ from hummingbot.connector.exchange.gemini.gemini_active_order_tracker import Gem
 
 
 class GeminiOrderBookTracker(OrderBookTracker):
-    _cbpobt_logger: Optional[HummingbotLogger] = None
+    _gobt_logger: Optional[HummingbotLogger] = None
 
     @classmethod
     def logger(cls) -> HummingbotLogger:
-        if cls._cbpobt_logger is None:
-            cls._cbpobt_logger = logging.getLogger(__name__)
-        return cls._cbpobt_logger
+        if cls._gobt_logger is None:
+            cls._gobt_logger = logging.getLogger(__name__)
+        return cls._gobt_logger
 
     def __init__(self, trading_pairs: Optional[List[str]] = None):
         super().__init__(
