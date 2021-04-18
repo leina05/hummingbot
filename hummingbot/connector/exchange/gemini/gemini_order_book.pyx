@@ -41,13 +41,15 @@ cdef class GeminiOrderBook(OrderBook):
         :param timestamp: timestamp attached to incoming data
         :return: GeminiOrderBookMessage
         """
-        if metadata:
-            msg.update(metadata)
-        return GeminiOrderBookMessage(
-            message_type=OrderBookMessageType.SNAPSHOT,
-            content=msg,
-            timestamp=timestamp
-        )
+        raise NotImplementedError("todo")
+        # if metadata:
+        #     msg.update(metadata)
+        # return GeminiOrderBookMessage(OrderBookMessageType.SNAPSHOT, {
+        #     "trading_pair": msg["trading_pair"],
+        #     "update_id": msg["lastUpdateId"],
+        #     "bids": msg["bids"],
+        #     "asks": msg["asks"]
+        # }, timestamp=timestamp)
 
     @classmethod
     def diff_message_from_exchange(cls,

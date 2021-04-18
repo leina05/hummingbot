@@ -71,7 +71,6 @@ class GeminiAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     @classmethod
     async def fetch_trading_pairs(cls) -> List[str]:
-        # TODO (leina)
         # GET https://api.gemini.com/v1/symbols
         try:
             async with aiohttp.ClientSession() as client:
@@ -81,8 +80,10 @@ class GeminiAPIOrderBookDataSource(OrderBookTrackerDataSource):
                         trading_pair_list: List[str] = []
 
                         for raw_trading_pair in raw_trading_pairs:
+                            # check cache
                             trading_pair = cls._trading_pair_cache.get(raw_trading_pair)
                             if not trading_pair:
+                                # if the symbol isn't cached, find the base/quote for each pair
                                 details = await cls._fetch_trading_pair_detail(raw_trading_pair)
                                 base = details.get("base_currency").upper()
                                 quote = details.get("quote_currency").upper()
@@ -120,33 +121,34 @@ class GeminiAPIOrderBookDataSource(OrderBookTrackerDataSource):
         Fetches order book snapshot for a particular trading pair from the rest API
         :returns: Response from the rest API
         """
-        # TODO (leina)
-        pass
-        # product_order_book_url: str = f"{COINBASE_REST_URL}/products/{trading_pair}/book?level=3"
-        # async with client.get(product_order_book_url) as response:
-        #     response: aiohttp.ClientResponse = response
-        #     if response.status != 200:
-        #         raise IOError(
-        #             f"Error fetching Coinbase Pro market snapshot for {trading_pair}. "
-        #             f"HTTP status is {response.status}."
-        #         )
-        #     data: Dict[str, Any] = await response.json()
-        #     return data
+        # GET https://api.gemini.com/v1/book/:symbol
+        symbol = _get_symbol(trading_pair)
+
+        symbol_order_book_url: str = f"{GEMINI_REST_URL}/v1/book/{symbol}"
+        async with client.get(symbol_order_book_url) as response:
+            response: aiohttp.ClientResponse = response
+            if response.status != 200:
+                raise IOError(
+                    f"Error fetching Gemini market snapshot for {trading_pair}. " f"HTTP status is {response.status}."
+                )
+            data: Dict[str, Any] = await response.json()
+            # TODO: clean data (turn strings into ints)??
+            data["timestamp"] = time.time()
+            return data
 
     async def get_new_order_book(self, trading_pair: str) -> OrderBook:
         # TODO (leina)
-        pass
-        # async with aiohttp.ClientSession() as client:
-        #     snapshot: Dict[str, any] = await self.get_snapshot(client, trading_pair)
-        #     snapshot_timestamp: float = time.time()
-        #     snapshot_msg: OrderBookMessage = CoinbaseProOrderBook.snapshot_message_from_exchange(
-        #         snapshot, snapshot_timestamp, metadata={"trading_pair": trading_pair}
-        #     )
-        #     active_order_tracker: CoinbaseProActiveOrderTracker = CoinbaseProActiveOrderTracker()
-        #     bids, asks = active_order_tracker.convert_snapshot_message_to_order_book_row(snapshot_msg)
-        #     order_book = self.order_book_create_function()
-        #     order_book.apply_snapshot(bids, asks, snapshot_msg.update_id)
-        #     return order_book
+        async with aiohttp.ClientSession() as client:
+            snapshot: Dict[str, any] = await self.get_snapshot(client, trading_pair)
+            snapshot_timestamp: float = time.time()
+            snapshot_msg: OrderBookMessage = GeminiOrderBook.snapshot_message_from_exchange(
+                snapshot, snapshot_timestamp, metadata={"trading_pair": trading_pair}
+            )
+            active_order_tracker: GeminiActiveOrderTracker = GeminiActiveOrderTracker()
+            bids, asks = active_order_tracker.convert_snapshot_message_to_order_book_row(snapshot_msg)
+            order_book = self.order_book_create_function()
+            order_book.apply_snapshot(bids, asks, snapshot_msg.update_id)
+            return order_book
 
     async def get_tracking_pairs(self) -> Dict[str, OrderBookTrackerEntry]:
         """
@@ -314,3 +316,7 @@ class GeminiAPIOrderBookDataSource(OrderBookTrackerDataSource):
         #     except Exception:
         #         self.logger().error("Unexpected error.", exc_info=True)
         #         await asyncio.sleep(5.0)
+
+
+def _get_symbol(trading_pair: str) -> str:
+    return trading_pair.replace("-", "").lower()
