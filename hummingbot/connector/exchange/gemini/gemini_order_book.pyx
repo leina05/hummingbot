@@ -41,15 +41,15 @@ cdef class GeminiOrderBook(OrderBook):
         :param timestamp: timestamp attached to incoming data
         :return: GeminiOrderBookMessage
         """
-        raise NotImplementedError("todo")
-        # if metadata:
-        #     msg.update(metadata)
-        # return GeminiOrderBookMessage(OrderBookMessageType.SNAPSHOT, {
-        #     "trading_pair": msg["trading_pair"],
-        #     "update_id": msg["lastUpdateId"],
-        #     "bids": msg["bids"],
-        #     "asks": msg["asks"]
-        # }, timestamp=timestamp)
+        if metadata:
+            msg.update(metadata)
+        return GeminiOrderBookMessage(message_type=OrderBookMessageType.SNAPSHOT, content={
+            "trading_pair": msg["trading_pair"],
+            "update_id": timestamp,
+            # TODO: Gemini's docs say teh timestamps are fake...
+            "bids": [(bid["price"], bid["amount"], bid["timestamp"]) for bid in msg["bids"]],
+            "asks": [(ask["price"], ask["amount"], ask["timestamp"]) for ask in msg["asks"]]
+        }, timestamp=timestamp)
 
     @classmethod
     def diff_message_from_exchange(cls,

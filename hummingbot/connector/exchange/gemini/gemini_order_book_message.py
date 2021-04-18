@@ -34,27 +34,24 @@ class GeminiOrderBookMessage(OrderBookMessage):
     @property
     def update_id(self) -> int:
         if self.type in [OrderBookMessageType.DIFF, OrderBookMessageType.SNAPSHOT]:
-            return int(self.content["sequence"])
+            return int(self.timestamp)
         else:
             return -1
 
     @property
     def trade_id(self) -> int:
         if self.type is OrderBookMessageType.TRADE:
-            return int(self.content["sequence"])
+            return int(self.timestamp)
         return -1
 
     @property
     def trading_pair(self) -> str:
-        if "product_id" in self.content:
-            return self.content["product_id"]
-        elif "symbol" in self.content:
-            return self.content["symbol"]
+        return self.content["trading_pair"]
 
     @property
     def asks(self) -> List[OrderBookRow]:
-        raise NotImplementedError("Coinbase Pro order book messages have different semantics.")
+        return [OrderBookRow(ask) for ask in self.content["asks"]]
 
     @property
     def bids(self) -> List[OrderBookRow]:
-        raise NotImplementedError("Coinbase Pro order book messages have different semantics.")
+        return [OrderBookRow(bid) for bid in self.content["bids"]]
